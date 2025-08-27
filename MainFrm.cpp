@@ -22,6 +22,247 @@ static char THIS_FILE[] = __FILE__;
 // Tenths of a millimeter per inch
 #define MM10PERINCH		254
 
+// Wirebox window class name
+static const TCHAR* WIREBOX_CLASS_NAME = _T("ZoomInWirebox");
+
+// Global wirebox window handle
+static HWND g_hWireboxWnd = NULL;
+
+// Window procedure for the wirebox
+
+//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+//{
+//	switch (msg)
+//	{
+//	case WM_PAINT:
+//	{
+//		PAINTSTRUCT ps;
+//		HDC hdc = BeginPaint(hwnd, &ps);
+//		RECT rect;
+//		GetClientRect(hwnd, &rect);
+//		// Draw a 1-pixel black border (XOR for visibility)
+//		HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
+//		FrameRect(hdc, &rect, hBrush);
+//		DeleteObject(hBrush);
+//		EndPaint(hwnd, &ps);
+//		return 0;
+//	}
+//	case WM_ERASEBKGND:
+//		return TRUE; // Transparent background
+//	case WM_DESTROY:
+//		g_hWireboxWnd = NULL;
+//		return 0;
+//	}
+//	return DefWindowProc(hwnd, msg, wParam, lParam);
+//}
+
+//LRESULT CALLBACK WireboxWndProc3(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+//{
+//	switch (msg)
+//	{
+//	case WM_PAINT:
+//	{
+//		PAINTSTRUCT ps;
+//		HDC hdc = BeginPaint(hwnd, &ps);
+//		RECT rect;
+//		GetClientRect(hwnd, &rect);
+//
+//		// Use XOR pen for high-contrast wireframe (mimics DSTINVERT)
+//		HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+//		HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+//		SetROP2(hdc, R2_NOTXORPEN); // Inverts pixels for visibility
+//
+//		// Draw wireframe (1-pixel outline)
+//		MoveToEx(hdc, rect.left, rect.top, NULL);
+//		LineTo(hdc, rect.right - 1, rect.top);
+//		LineTo(hdc, rect.right - 1, rect.bottom - 1);
+//		LineTo(hdc, rect.left, rect.bottom - 1);
+//		LineTo(hdc, rect.left, rect.top);
+//
+//		SelectObject(hdc, hOldPen);
+//		DeleteObject(hPen);
+//
+//		EndPaint(hwnd, &ps);
+//		return 0;
+//	}
+//	case WM_ERASEBKGND:
+//		return TRUE; // Transparent background
+//	case WM_DESTROY:
+//		g_hWireboxWnd = NULL;
+//		return 0;
+//	}
+//	return DefWindowProc(hwnd, msg, wParam, lParam);
+//}
+
+//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+//{
+//	switch (msg)
+//	{
+//	case WM_PAINT:
+//	{
+//		PAINTSTRUCT ps;
+//		HDC hdc = ::BeginPaint(hwnd, &ps);
+//		RECT rect;
+//		::GetClientRect(hwnd, &rect);
+//
+//		// Create memory DC and bitmap
+//		HDC hdcMem = ::CreateCompatibleDC(hdc);
+//		int width = rect.right - rect.left;
+//		int height = rect.bottom - rect.top;
+//
+//		// Create 32-bit DIB for per-pixel alpha
+//		BITMAPINFO bmi = { 0 };
+//		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+//		bmi.bmiHeader.biWidth = width;
+//		bmi.bmiHeader.biHeight = -height; // Top-down
+//		bmi.bmiHeader.biPlanes = 1;
+//		bmi.bmiHeader.biBitCount = 32;
+//		bmi.bmiHeader.biCompression = BI_RGB;
+//
+//		void* pBits;
+//		HBITMAP hBitmap = ::CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+//		if (hBitmap)
+//		{
+//			HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hdcMem, hBitmap);
+//
+//			// Fill with transparent black (alpha=0)
+//			memset(pBits, 0, width * height * 4);
+//
+//			// Draw wireframe with XOR for visibility
+//			HPEN hPen = ::CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+//			HPEN hOldPen = (HPEN)::SelectObject(hdcMem, hPen);
+//			::SetROP2(hdcMem, R2_NOTXORPEN); // Mimics DSTINVERT
+//			HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdcMem, ::GetStockObject(NULL_BRUSH));
+//
+//			// Draw rectangle outline
+//			::Rectangle(hdcMem, 0, 0, width, height);
+//
+//			::SelectObject(hdcMem, hOldPen);
+//			::SelectObject(hdcMem, hOldBrush);
+//			::DeleteObject(hPen);
+//
+//			// Update layered window
+//			POINT ptSrc = { 0, 0 };
+//			SIZE size = { width, height };
+//			BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+//			POINT ptDst = { rect.left, rect.top };
+//			::GetWindowRect(hwnd, &rect);
+//			ptDst.x = rect.left;
+//			ptDst.y = rect.top;
+//
+//			::UpdateLayeredWindow(hwnd, hdc, &ptDst, &size, hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
+//
+//			::SelectObject(hdcMem, hOldBitmap);
+//			::DeleteObject(hBitmap);
+//		}
+//		::DeleteDC(hdcMem);
+//		::EndPaint(hwnd, &ps);
+//		return 0;
+//	}
+//	case WM_ERASEBKGND:
+//		return TRUE; // No background erase
+//	case WM_DESTROY:
+//		g_hWireboxWnd = NULL;
+//		return 0;
+//	}
+//	return ::DefWindowProc(hwnd, msg, wParam, lParam);
+//}
+
+//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+//{
+//	switch (msg)
+//	{
+//	case WM_PAINT:
+//	{
+//		PAINTSTRUCT ps;
+//		HDC hdc = ::BeginPaint(hwnd, &ps);
+//		RECT rect;
+//		::GetClientRect(hwnd, &rect);
+//
+//		ATLTRACE("WireboxWndProc: WM_PAINT, rect = LT(%d,%d) RB(%d,%d)\n",
+//			rect.left, rect.top, rect.right, rect.bottom);
+//
+//		// Draw wireframe with XOR for high contrast
+//		HPEN hPen = ::CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+//		HPEN hOldPen = (HPEN)::SelectObject(hdc, hPen);
+//		::SetROP2(hdc, R2_NOTXORPEN); // Mimics DSTINVERT
+//		HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdc, ::GetStockObject(NULL_BRUSH));
+//
+//		// Draw rectangle outline
+//		::Rectangle(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top);
+//
+//		::SelectObject(hdc, hOldPen);
+//		::SelectObject(hdc, hOldBrush);
+//		::DeleteObject(hPen);
+//
+//		::EndPaint(hwnd, &ps);
+//		return 0;
+//	}
+//	case WM_ERASEBKGND:
+//		ATLTRACE("WireboxWndProc: WM_ERASEBKGND\n");
+//		return TRUE; // Transparent background
+//	case WM_DESTROY:
+//		ATLTRACE("WireboxWndProc: WM_DESTROY\n");
+//		g_hWireboxWnd = NULL;
+//		return 0;
+//	}
+//	return ::DefWindowProc(hwnd, msg, wParam, lParam);
+//}
+
+static const COLORREF COLOR_KEY = RGB(255, 0, 255);  // Magenta as color key for transparency (unlikely screen color)
+static const COLORREF LINE_COLOR = RGB(0, 0, 0);  // Black for outline (change to RGB(255,255,255) for white if needed)
+
+LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		HDC hdc = ::BeginPaint(hwnd, &ps);
+		CRect rect;
+		::GetClientRect(hwnd, &rect);
+
+		ATLTRACE("WireboxWndProc: WM_PAINT, rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+
+		// Fill with color key for transparency
+		HBRUSH hBrush = ::CreateSolidBrush(COLOR_KEY);
+		::FillRect(hdc, &rect, hBrush);
+		::DeleteObject(hBrush);
+
+		// Draw wireframe outline
+		HPEN hPen = ::CreatePen(PS_SOLID, 1, LINE_COLOR);
+		HPEN hOldPen = (HPEN)::SelectObject(hdc, hPen);
+		//SetROP2(hdc, R2_NOTXORPEN); // Inverts pixels for visibility
+		HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdc, ::GetStockObject(NULL_BRUSH));
+
+		CBrush brush(COLOR_KEY);
+		::FillRect(hdc, rect, (HBRUSH)brush.GetSafeHandle());
+
+		//::Rectangle(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top);
+
+		PatBlt(hdc, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
+		PatBlt(hdc, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
+		PatBlt(hdc, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
+		PatBlt(hdc, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
+
+		::SelectObject(hdc, hOldPen);
+		::SelectObject(hdc, hOldBrush);
+		::DeleteObject(hPen);
+
+		::EndPaint(hwnd, &ps);
+		return 0;
+	}
+	case WM_ERASEBKGND:
+		ATLTRACE("WireboxWndProc: WM_ERASEBKGND\n");
+		return 1; // Transparent background
+	case WM_DESTROY:
+		ATLTRACE("WireboxWndProc: WM_DESTROY\n");
+		g_hWireboxWnd = NULL;
+		return 0;
+	}
+	return ::DefWindowProc(hwnd, msg, wParam, lParam);
+}
 // Register a Window Message for the Taskbar Creation
 // This message is passed to us if Explorer crashes and reloads
 UINT CMainFrame::s_wmTaskbarCreated = RegisterWindowMessage(_T("TaskbarCreated"));
@@ -152,6 +393,14 @@ CMainFrame::CMainFrame()
 	CreateEx(WS_EX_TOPMOST, strWndClass, _T("ZoomIn"), WS_CAPTION | WS_OVERLAPPED | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX, point.x, point.y, size.cx, size.cy, NULL, m_menu.GetSafeHmenu());
 	LoadAccelTable(MAKEINTRESOURCE(IDR_MAINFRAME));
 
+	// After CreateEx call
+	WNDCLASS wc = { 0 };
+	wc.lpfnWndProc = WireboxWndProc;
+	wc.hInstance = AfxGetInstanceHandle();
+	wc.lpszClassName = WIREBOX_CLASS_NAME;
+	wc.hbrBackground = NULL; // Transparent
+	RegisterClass(&wc);
+
 	SetIcon(m_hIconLarge, TRUE);		// Set big icon
 	SetIcon(m_hIconSmall, FALSE);		// Set small icon
 
@@ -197,6 +446,9 @@ CMainFrame::~CMainFrame()
 		DestroyIcon(m_hIconLarge);
 	if(m_hCursorScan != NULL)
 		DestroyCursor(m_hCursorScan);
+
+	if (g_hWireboxWnd)
+		::DestroyWindow(g_hWireboxWnd);
 }
 
 //***********************************************
@@ -526,6 +778,24 @@ void CMainFrame::OnWindowPosChanging(WINDOWPOS *pwndpos)
 }
 
 //***********************************************
+//void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point)
+//{
+//	m_ptZoom.x = point.x;
+//	m_ptZoom.y = point.y;
+//
+//	m_wndStatusBar.SetPaneText(1, _T(""));
+//	m_wndStatusBar.SetPaneText(2, _T(""));
+//
+//	ClientToScreen(&m_ptZoom);
+//	DrawZoomRect();
+//	DoTheZoom();
+//
+//	SetCapture();
+//	m_bIsLooking = true;
+//	m_hCursorPrev = SetCursor(m_hCursorScan);
+//
+//	CFrameWnd::OnLButtonDown(nFlags, point);
+//}
 void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// Use GetCursorPos for accurate screen coordinates
@@ -547,51 +817,90 @@ void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point)
 
 	CFrameWnd::OnLButtonDown(nFlags, point);
 }
-
 //***********************************************
+//void CMainFrame::OnLButtonUp(UINT nFlags, CPoint point)
+//{
+//	if(m_bIsLooking)
+//	{
+//		DrawZoomRect();
+//		ReleaseCapture();
+//		m_bIsLooking = false;
+//
+////		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
+//		SetCursor(m_hCursorPrev);
+//
+//		// Redraw the whole screen
+//		::InvalidateRect(NULL, NULL, FALSE);
+//	}
+//
+//	CFrameWnd::OnLButtonUp(nFlags, point);
+//}
 void CMainFrame::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	if(m_bIsLooking)
+	if (m_bIsLooking)
 	{
-		DrawZoomRect();
+		if (g_hWireboxWnd)
+			::ShowWindow(g_hWireboxWnd, SW_HIDE);
 		ReleaseCapture();
 		m_bIsLooking = false;
-
-//		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
 		SetCursor(m_hCursorPrev);
-
-		// Redraw the whole screen
 		::InvalidateRect(NULL, NULL, FALSE);
 	}
-
 	CFrameWnd::OnLButtonUp(nFlags, point);
 }
-
 //***********************************************
-void CMainFrame::OnCaptureChanged(CWnd *pWnd)
+//void CMainFrame::OnCaptureChanged(CWnd *pWnd)
+//{
+//	if(m_bIsLooking)
+//	{
+//		DrawZoomRect();
+//		ReleaseCapture();
+//		m_bIsLooking = false;
+//
+////		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
+//		SetCursor(m_hCursorPrev);
+//	}
+//
+//	CFrameWnd::OnCaptureChanged(pWnd);
+//}
+void CMainFrame::OnCaptureChanged(CWnd* pWnd)
 {
-	if(m_bIsLooking)
+	if (m_bIsLooking)
 	{
-		DrawZoomRect();
+		if (g_hWireboxWnd)
+			::ShowWindow(g_hWireboxWnd, SW_HIDE);
 		ReleaseCapture();
 		m_bIsLooking = false;
-
-//		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
 		SetCursor(m_hCursorPrev);
 	}
-
 	CFrameWnd::OnCaptureChanged(pWnd);
 }
-
 //***********************************************
 void CMainFrame::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if(m_bIsLooking)
 	{
-		DrawZoomRect();
-		m_ptZoom.x = point.x;
-		m_ptZoom.y = point.y;
-		ClientToScreen(&m_ptZoom);
+		//ATLTRACE("OnMouseMove point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, m_ptZoom.x, m_ptZoom.y);
+		//DrawZoomRect();
+		//m_ptZoom.x = point.x;
+		//m_ptZoom.y = point.y;
+		//ClientToScreen(&m_ptZoom);
+		//DrawZoomRect();
+		//DoTheZoom();
+
+		//POINT pt;
+		//GetCursorPos(&pt);
+		//ATLTRACE("OnMouseMove: point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, pt.x, pt.y);
+		////if (g_hWireboxWnd)
+		////	::ShowWindow(g_hWireboxWnd, SW_HIDE); // Hide to avoid flicker
+		//m_ptZoom = pt;
+		//DrawZoomRect();
+		//DoTheZoom();
+
+		POINT pt;
+		GetCursorPos(&pt);
+		ATLTRACE("OnMouseMove: point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, pt.x, pt.y);
+		m_ptZoom = pt;
 		DrawZoomRect();
 		DoTheZoom();
 	}
@@ -603,8 +912,8 @@ void CMainFrame::OnMouseMove(UINT nFlags, CPoint point)
 		if(m_settings.GetAbsoluteNumbering())
 		{
 			CPoint pt;
-			pt.x = BOUND(m_ptZoom.x, m_nxZoomed / 2, m_nxScreenMax - (m_nxZoomed / 2));
-			pt.y = BOUND(m_ptZoom.y, m_nyZoomed / 2, m_nyScreenMax - (m_nyZoomed / 2));
+			pt.x = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+			pt.y = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
 			nXRef = pt.x - m_nxZoomed / 2;
 			nYRef = pt.y - m_nyZoomed / 2;
 		}
@@ -704,17 +1013,29 @@ void CMainFrame::DoTheZoom(CDC *pDC)
 	// Establish point to use for bitmapping
 	// The point must not include areas outside the screen dimensions.
 	CPoint pt;
-	pt.x = BOUND(m_ptZoom.x, m_nxZoomed / 2, m_nxScreenMax - (m_nxZoomed / 2));
-	pt.y = BOUND(m_ptZoom.y, m_nyZoomed / 2, m_nyScreenMax - (m_nyZoomed / 2));
+	pt.x = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+	pt.y = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
 
 	// Draw in the off-screen dc
 	// Obtain pointer to screen dc
 	pdcScreen = CDC::FromHandle(::GetDC(NULL));
 
+	//bool wasVisible = false;
+	//if (m_bIsLooking && g_hWireboxWnd)
+	//{
+	//	wasVisible = ::IsWindowVisible(g_hWireboxWnd);
+	//	::ShowWindow(g_hWireboxWnd, SW_HIDE);
+	//}
+
 	// Copy screen image to memory dc
 	dcMem.FloodFill(1, 1, RGB(0, 0, 0));
 	dcMem.SetStretchBltMode(COLORONCOLOR);
 	dcMem.StretchBlt(0, 0, m_settings.GetZoom() * m_nxZoomed, m_settings.GetZoom() * m_nyZoomed, pdcScreen, pt.x - m_nxZoomed / 2, pt.y - m_nyZoomed / 2, m_nxZoomed, m_nyZoomed, SRCCOPY);
+
+	//if (m_bIsLooking && g_hWireboxWnd && wasVisible)
+	//{
+	//	::ShowWindow(g_hWireboxWnd, SW_SHOWNA);  // SW_SHOWNA avoids activation/focus change
+	//}
 
 	// Does the zoomed rect intersect with the client window?
 	// If so fill the area with black to prevent scanning the scan area.
@@ -737,6 +1058,8 @@ void CMainFrame::DoTheZoom(CDC *pDC)
 
 	// Finished with screen dc
 	ReleaseDC(pdcScreen);
+
+	ATLTRACE("DoTheZoom rectZoom = LT(%d,%d) RB(%d,%d)\n", rectZoom.left, rectZoom.top, rectZoom.right, rectZoom.bottom);
 
 	// Draw in gridlines
 	if(m_settings.GetGrid())
@@ -796,10 +1119,450 @@ void CMainFrame::DoTheGrid(CDC *pDC)
 }
 
 //***********************************************
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	HDC hdc = ::GetDC(NULL);
+//	PatBlt(hdc, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
+//	PatBlt(hdc, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
+//	PatBlt(hdc, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
+//	PatBlt(hdc, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
+//	::ReleaseDC(NULL, hdc);
+//}
+
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	//ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	// Get the monitor containing the zoom center
+//	POINT ptCenter = { nX, nY };
+//	HMONITOR hMonitor = MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+//	if (hMonitor)
+//	{
+//		MONITORINFOEX mi;
+//		mi.cbSize = sizeof(MONITORINFOEX);
+//		if (GetMonitorInfo(hMonitor, (LPMONITORINFO)&mi))
+//		{
+//			// Create DC for this specific monitor
+//			HDC hdc = CreateDC(mi.szDevice, NULL, NULL, NULL);
+//			if (hdc)
+//			{
+//				// Adjust coordinates to be relative to the monitor's top-left (0,0)
+//				int relLeft = rect.left - mi.rcMonitor.left;
+//				int relTop = rect.top - mi.rcMonitor.top;
+//				int relRight = rect.right - mi.rcMonitor.left;
+//				int relBottom = rect.bottom - mi.rcMonitor.top;
+//				int relWidth = rect.Width();
+//				int relHeight = rect.Height();
+//
+//				// Draw the four sides with relative coordinates
+//				PatBlt(hdc, relLeft, relTop, relWidth, 1, DSTINVERT);
+//				PatBlt(hdc, relLeft, relBottom, 1, -relHeight, DSTINVERT);
+//				PatBlt(hdc, relRight - 1, relTop, 1, relHeight, DSTINVERT);
+//				PatBlt(hdc, relRight, relBottom - 1, -relWidth, 1, DSTINVERT);
+//
+//				//PatBlt(hdc, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
+//				//PatBlt(hdc, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
+//				//PatBlt(hdc, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
+//				//PatBlt(hdc, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
+//
+//				ATLTRACE("DrawZoomRect display=%S rect = LT(%d,%d) RB(%d,%d)\n", mi.szDevice, relLeft, relTop, relRight, relBottom);
+//
+//				DeleteDC(hdc);
+//			}
+//		}
+//	}
+//}
+
+//// Struct to pass data to the enum callback
+//struct DrawWireboxData {
+//	HMONITOR hTargetMonitor;
+//	RECT rect;
+//	BOOL isWirebox;  // True for DrawZoomRect, false for inverted bar in DoTheZoom
+//};
+//
+//// Callback for EnumDisplayMonitors to draw on the target monitor's DC
+//BOOL CALLBACK DrawWireboxEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM lParam) {
+//	DrawWireboxData* pData = (DrawWireboxData*)lParam;
+//	if (hMonitor == pData->hTargetMonitor && hdcMonitor != NULL) {
+//		ATLTRACE("Drawing on monitor %p, bounds LT(%d,%d) RB(%d,%d), rect LT(%d,%d) RB(%d,%d)\n",
+//			hMonitor, lprcMonitor->left, lprcMonitor->top, lprcMonitor->right, lprcMonitor->bottom,
+//			pData->rect.left, pData->rect.top, pData->rect.right, pData->rect.bottom);
+//
+//		// Create a memory DC for drawing
+//		HDC hdcMem = CreateCompatibleDC(hdcMonitor);
+//		if (hdcMem) {
+//			HBITMAP hBitmap = CreateCompatibleBitmap(hdcMonitor, pData->rect.right - pData->rect.left, pData->rect.bottom - pData->rect.top);
+//			if (hBitmap) {
+//				HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
+//
+//				// Copy the screen region to the memory DC
+//				BitBlt(hdcMem, 0, 0, pData->rect.right - pData->rect.left, pData->rect.bottom - pData->rect.top,
+//					hdcMonitor, pData->rect.left, pData->rect.top, SRCCOPY);
+//
+//				// Draw the wirebox or inverted bar with PatBlt in memory DC (relative to 0,0)
+//				if (pData->isWirebox) {
+//					PatBlt(hdcMem, 0, 0, pData->rect.right - pData->rect.left, 1, DSTINVERT);
+//					PatBlt(hdcMem, 0, pData->rect.bottom - pData->rect.top - 1, 1, -(pData->rect.bottom - pData->rect.top), DSTINVERT);
+//					PatBlt(hdcMem, pData->rect.right - pData->rect.left - 1, 0, 1, pData->rect.bottom - pData->rect.top, DSTINVERT);
+//					PatBlt(hdcMem, pData->rect.right - pData->rect.left - 1, pData->rect.bottom - pData->rect.top - 1, -(pData->rect.right - pData->rect.left), 1, DSTINVERT);
+//				}
+//				else {
+//					PatBlt(hdcMem, 0, 0, pData->rect.right - pData->rect.left, 8, DSTINVERT);
+//				}
+//
+//				// Copy back to the monitor DC
+//				BitBlt(hdcMonitor, pData->rect.left, pData->rect.top, pData->rect.right - pData->rect.left, pData->rect.bottom - pData->rect.top,
+//					hdcMem, 0, 0, SRCCOPY);
+//
+//				SelectObject(hdcMem, hOldBitmap);
+//				DeleteObject(hBitmap);
+//			}
+//			DeleteDC(hdcMem);
+//		}
+//	}
+//	return TRUE;
+//}
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	// Get the monitor containing the zoom center
+//	POINT ptCenter = { nX, nY };
+//	HMONITOR hTargetMonitor = MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+//	if (hTargetMonitor)
+//	{
+//		ATLTRACE("Target monitor for ptCenter (%d,%d) = %p\n", nX, nY, hTargetMonitor);
+//
+//		// Get desktop DC
+//		HDC hdcDesktop = ::GetDC(NULL);
+//		if (hdcDesktop)
+//		{
+//			// Prepare data for callback
+//			DrawWireboxData data;
+//			data.hTargetMonitor = hTargetMonitor;
+//			data.rect = rect;
+//			data.isWirebox = TRUE;
+//
+//			// Enumerate monitors with desktop DC
+//			EnumDisplayMonitors(hdcDesktop, NULL, DrawWireboxEnumProc, (LPARAM)&data);
+//			::ReleaseDC(NULL, hdcDesktop);
+//		}
+//		else
+//		{
+//			ATLTRACE("GetDC(NULL) failed, error = %d\n", GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		ATLTRACE("MonitorFromPoint failed for pt (%d,%d)\n", nX, nY);
+//	}
+//}
+
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	// Get the monitor containing the zoom center
+//	POINT ptCenter = { nX, nY };
+//	HMONITOR hTargetMonitor = MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+//	if (hTargetMonitor)
+//	{
+//		MONITORINFOEX mi;
+//		mi.cbSize = sizeof(MONITORINFOEX);
+//		if (GetMonitorInfo(hTargetMonitor, (LPMONITORINFO)&mi))
+//		{
+//			ATLTRACE("Target monitor %S, bounds LT(%d,%d) RB(%d,%d)\n",
+//				mi.szDevice, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+//
+//			// Get desktop DC
+//			HDC hdcDesktop = ::GetDC(NULL);
+//			if (hdcDesktop)
+//			{
+//				// Create clipping region for the target monitor
+//				HRGN hRgn = CreateRectRgn(mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+//				if (hRgn)
+//				{
+//					// Select clipping region
+//					if (SelectClipRgn(hdcDesktop, hRgn) != ERROR)
+//					{
+//						// Draw wirebox using virtual desktop coordinates
+//						PatBlt(hdcDesktop, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
+//						PatBlt(hdcDesktop, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
+//						PatBlt(hdcDesktop, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
+//						PatBlt(hdcDesktop, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
+//					}
+//					else
+//					{
+//						ATLTRACE("SelectClipRgn failed, error = %d\n", GetLastError());
+//					}
+//					DeleteObject(hRgn);
+//				}
+//				else
+//				{
+//					ATLTRACE("CreateRectRgn failed, error = %d\n", GetLastError());
+//				}
+//				::ReleaseDC(NULL, hdcDesktop);
+//			}
+//			else
+//			{
+//				ATLTRACE("GetDC(NULL) failed, error = %d\n", GetLastError());
+//			}
+//		}
+//		else
+//		{
+//			ATLTRACE("GetMonitorInfo failed, error = %d\n", GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, GetLastError());
+//	}
+//}
+
+////void CMainFrame::DrawZoomRect(void)
+////{
+////	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+////	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+////
+////	CRect rect;
+////	rect.left = nX - m_nxZoomed / 2;
+////	rect.top = nY - m_nyZoomed / 2;
+////	rect.right = rect.left + m_nxZoomed;
+////	rect.bottom = rect.top + m_nyZoomed;
+////	InflateRect(&rect, 1, 1);
+////
+////	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+////
+////	// Verify monitor
+////	POINT ptCenter = { nX, nY };
+////	HMONITOR hTargetMonitor = MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+////	if (hTargetMonitor)
+////	{
+////		MONITORINFOEX mi;
+////		mi.cbSize = sizeof(MONITORINFOEX);
+////		if (GetMonitorInfo(hTargetMonitor, (LPMONITORINFO)&mi))
+////		{
+////			ATLTRACE("Target monitor %S, bounds LT(%d,%d) RB(%d,%d)\n",
+////				mi.szDevice, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+////		}
+////		else
+////		{
+////			ATLTRACE("GetMonitorInfo failed, error = %d\n", GetLastError());
+////		}
+////	}
+////	else
+////	{
+////		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, GetLastError());
+////	}
+////
+////	// Create or move the wirebox window
+////	if (!g_hWireboxWnd)
+////	{
+////		// Create layered window (transparent, topmost)
+////		g_hWireboxWnd = CreateWindowEx(
+////			WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+////			WIREBOX_CLASS_NAME,
+////			_T("Wirebox"),
+////			WS_POPUP | WS_VISIBLE,
+////			rect.left, rect.top, rect.Width(), rect.Height(),
+////			NULL, NULL, AfxGetInstanceHandle(), NULL);
+////		if (g_hWireboxWnd)
+////		{
+////			// Set 50% opacity
+////			::SetLayeredWindowAttributes(g_hWireboxWnd, 0, 64, LWA_ALPHA);
+////		}
+////		else
+////		{
+////			ATLTRACE("CreateWindowEx failed for wirebox, error = %d\n", GetLastError());
+////		}
+////	}
+////	else
+////	{
+////		// Move and show the window
+////		::SetWindowPos(g_hWireboxWnd, HWND_TOPMOST, rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+////	}
+////}
+
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	// Verify monitor
+//	POINT ptCenter = { nX, nY };
+//	HMONITOR hTargetMonitor = MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+//	if (hTargetMonitor)
+//	{
+//		MONITORINFOEX mi;
+//		mi.cbSize = sizeof(MONITORINFOEX);
+//		if (GetMonitorInfo(hTargetMonitor, (LPMONITORINFO)&mi))
+//		{
+//			ATLTRACE("Target monitor %S, bounds LT(%d,%d) RB(%d,%d)\n",
+//				mi.szDevice, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+//		}
+//		else
+//		{
+//			ATLTRACE("GetMonitorInfo failed, error = %d\n", GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, GetLastError());
+//	}
+//
+//	// Create or move the wirebox window
+//	if (!g_hWireboxWnd)
+//	{
+//		// Create layered window (fully transparent background, topmost)
+//		g_hWireboxWnd = CreateWindowEx(
+//			WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+//			WIREBOX_CLASS_NAME,
+//			_T("Wirebox"),
+//			WS_POPUP | WS_VISIBLE,
+//			rect.left, rect.top, rect.Width(), rect.Height(),
+//			NULL, NULL, AfxGetInstanceHandle(), NULL);
+//		if (g_hWireboxWnd)
+//		{
+//			// Set full opacity for the wireframe (alpha only affects drawn pixels)
+//			::SetLayeredWindowAttributes(g_hWireboxWnd, 0, 255, LWA_ALPHA);
+//			::UpdateWindow(g_hWireboxWnd); // Force initial paint
+//		}
+//		else
+//		{
+//			ATLTRACE("CreateWindowEx failed for wirebox, error = %d\n", GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		// Move the window (no redraw needed, WM_PAINT handles it)
+//		::SetWindowPos(g_hWireboxWnd, HWND_TOPMOST, rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+//		::InvalidateRect(g_hWireboxWnd, NULL, FALSE); // Force repaint
+//		::UpdateWindow(g_hWireboxWnd);
+//	}
+//}
+
+//void CMainFrame::DrawZoomRect(void)
+//{
+//	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+//	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
+//
+//	CRect rect;
+//	rect.left = nX - m_nxZoomed / 2;
+//	rect.top = nY - m_nyZoomed / 2;
+//	rect.right = rect.left + m_nxZoomed;
+//	rect.bottom = rect.top + m_nyZoomed;
+//	InflateRect(&rect, 1, 1);
+//
+//	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+//
+//	// Verify monitor
+//	POINT ptCenter = { nX, nY };
+//	HMONITOR hTargetMonitor = ::MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+//	if (hTargetMonitor)
+//	{
+//		MONITORINFOEX mi;
+//		mi.cbSize = sizeof(MONITORINFOEX);
+//		if (::GetMonitorInfo(hTargetMonitor, (LPMONITORINFO)&mi))
+//		{
+//			ATLTRACE("Target monitor %S, bounds LT(%d,%d) RB(%d,%d)\n",
+//				mi.szDevice, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+//		}
+//		else
+//		{
+//			ATLTRACE("GetMonitorInfo failed, error = %d\n", ::GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, ::GetLastError());
+//	}
+//
+//	// Create or move the wirebox window
+//	if (!g_hWireboxWnd)
+//	{
+//		// Create layered window (fully transparent background, topmost)
+//		g_hWireboxWnd = ::CreateWindowEx(
+//			WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+//			WIREBOX_CLASS_NAME,
+//			_T("Wirebox"),
+//			WS_POPUP | WS_VISIBLE,
+//			rect.left, rect.top, rect.Width(), rect.Height(),
+//			NULL, NULL, AfxGetInstanceHandle(), NULL);
+//		if (g_hWireboxWnd)
+//		{
+//			// Set full opacity for drawn pixels, relying on bitmap alpha
+//			::SetLayeredWindowAttributes(g_hWireboxWnd, 0, 255, LWA_ALPHA);
+//			::UpdateWindow(g_hWireboxWnd);
+//		}
+//		else
+//		{
+//			ATLTRACE("CreateWindowEx failed for wirebox, error = %d\n", ::GetLastError());
+//		}
+//	}
+//	else
+//	{
+//		// Move and resize the window
+//		::SetWindowPos(g_hWireboxWnd, HWND_TOPMOST, rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+//		::InvalidateRect(g_hWireboxWnd, NULL, FALSE);
+//		::UpdateWindow(g_hWireboxWnd);
+//	}
+//}
+
 void CMainFrame::DrawZoomRect(void)
 {
-	int nX = BOUND(m_ptZoom.x, m_nxZoomed / 2, m_nxScreenMax - (m_nxZoomed / 2));
-	int nY = BOUND(m_ptZoom.y, m_nyZoomed / 2, m_nyScreenMax - (m_nyZoomed / 2));
+	int nX = BOUND(m_ptZoom.x, m_nxScreenMin + (m_nxZoomed / 2), m_nxScreenMax - (m_nxZoomed / 2));
+	int nY = BOUND(m_ptZoom.y, m_nyScreenMin + (m_nyZoomed / 2), m_nyScreenMax - (m_nyZoomed / 2));
 
 	CRect rect;
 	rect.left = nX - m_nxZoomed / 2;
@@ -808,14 +1571,63 @@ void CMainFrame::DrawZoomRect(void)
 	rect.bottom = rect.top + m_nyZoomed;
 	InflateRect(&rect, 1, 1);
 
-	HDC hdc = ::GetDC(NULL);
-	PatBlt(hdc, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
-	PatBlt(hdc, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
-	PatBlt(hdc, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
-	PatBlt(hdc, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
-	::ReleaseDC(NULL, hdc);
-}
+	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
 
+	// Verify monitor
+	POINT ptCenter = { nX, nY };
+	HMONITOR hTargetMonitor = ::MonitorFromPoint(ptCenter, MONITOR_DEFAULTTONEAREST);
+	if (hTargetMonitor)
+	{
+		MONITORINFOEX mi;
+		mi.cbSize = sizeof(MONITORINFOEX);
+		if (::GetMonitorInfo(hTargetMonitor, (LPMONITORINFO)&mi))
+		{
+			ATLTRACE("Target monitor %S, bounds LT(%d,%d) RB(%d,%d)\n",
+				mi.szDevice, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom);
+		}
+		else
+		{
+			ATLTRACE("GetMonitorInfo failed, error = %d\n", ::GetLastError());
+		}
+	}
+	else
+	{
+		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, ::GetLastError());
+	}
+
+	// Create or move the wirebox window
+	if (!g_hWireboxWnd)
+	{
+		g_hWireboxWnd = ::CreateWindowEx(
+			WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+			WIREBOX_CLASS_NAME,
+			_T("Wirebox"),
+			WS_POPUP | WS_VISIBLE,
+			rect.left, rect.top, rect.Width(), rect.Height(),
+			NULL, NULL, AfxGetInstanceHandle(), NULL);
+		if (g_hWireboxWnd)
+		{
+			ATLTRACE("Wirebox window created, HWND = %p, pos LT(%d,%d) size (%d,%d)\n",
+				g_hWireboxWnd, rect.left, rect.top, rect.Width(), rect.Height());
+
+			// Set color key for transparency
+			::SetLayeredWindowAttributes(g_hWireboxWnd, COLOR_KEY, 0, LWA_COLORKEY);
+			::UpdateWindow(g_hWireboxWnd);
+		}
+		else
+		{
+			ATLTRACE("CreateWindowEx failed for wirebox, error = %d\n", ::GetLastError());
+		}
+	}
+	else
+	{
+		ATLTRACE("Moving wirebox window, HWND = %p, pos LT(%d,%d) size (%d,%d)\n",
+			g_hWireboxWnd, rect.left, rect.top, rect.Width(), rect.Height());
+		::SetWindowPos(g_hWireboxWnd, HWND_TOPMOST, rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+		::InvalidateRect(g_hWireboxWnd, NULL, TRUE);
+		::UpdateWindow(g_hWireboxWnd);
+	}
+}
 //***********************************************
 void CMainFrame::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar *pScrollBar)
 {
@@ -894,7 +1706,7 @@ void CMainFrame::MoveView(int nDirectionCode, bool bFast, bool bPeg)
 			m_ptZoom.y = m_nyZoomed / 2;
 		else
 			m_ptZoom.y -= nDelta;
-		m_ptZoom.y = BOUND(m_ptZoom.y, 0, m_nyScreenMax);
+		m_ptZoom.y = BOUND(m_ptZoom.y, m_nyScreenMin, m_nyScreenMax);
 		break;
 
 	case VK_DOWN:
@@ -902,7 +1714,7 @@ void CMainFrame::MoveView(int nDirectionCode, bool bFast, bool bPeg)
 			m_ptZoom.y = m_nyScreenMax - (m_nyZoomed / 2);
 		else
 			m_ptZoom.y += nDelta;
-		m_ptZoom.y = BOUND(m_ptZoom.y, 0, m_nyScreenMax);
+		m_ptZoom.y = BOUND(m_ptZoom.y, m_nyScreenMin, m_nyScreenMax);
 		break;
 
 	case VK_LEFT:
@@ -910,7 +1722,7 @@ void CMainFrame::MoveView(int nDirectionCode, bool bFast, bool bPeg)
 			m_ptZoom.x = m_nxZoomed / 2;
 		else
 			m_ptZoom.x -= nDelta;
-		m_ptZoom.x = BOUND(m_ptZoom.x, 0, m_nxScreenMax);
+		m_ptZoom.x = BOUND(m_ptZoom.x, m_nxScreenMin, m_nxScreenMax);
 		break;
 
 	case VK_RIGHT:
@@ -918,7 +1730,7 @@ void CMainFrame::MoveView(int nDirectionCode, bool bFast, bool bPeg)
 			m_ptZoom.x = m_nxScreenMax - (m_nxZoomed / 2);
 		else
 			m_ptZoom.x += nDelta;
-		m_ptZoom.x = BOUND(m_ptZoom.x, 0, m_nxScreenMax);
+		m_ptZoom.x = BOUND(m_ptZoom.x, m_nxScreenMin, m_nxScreenMax);
 		break;
 	}
 
