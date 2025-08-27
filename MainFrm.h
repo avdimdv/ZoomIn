@@ -2,8 +2,27 @@
 
 #include "Settings.h"
 
+class CMainFrame;
+
+class CWireboxWnd : public CWnd
+{
+	DECLARE_DYNAMIC(CWireboxWnd)
+public:
+	CWireboxWnd(CMainFrame* pMainFrame);
+	virtual ~CWireboxWnd();
+
+protected:
+	CMainFrame* m_pMainFrame;
+	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnPaint();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+};
+
 class CMainFrame : public CFrameWnd
 {
+	friend class CWireboxWnd;
+
 protected: // create from serialization only
 	DECLARE_DYNCREATE(CMainFrame)
 
@@ -38,6 +57,8 @@ protected:
 	CScrollBar m_wndScrollBar;
 	CPalette m_palPhysical;
 	static UINT s_wmTaskbarCreated;
+	CWireboxWnd m_wireboxWnd;
+	int m_nWireboxLineWidth = 2;
 
 	CSettings m_settings;
 	bool m_bSaveSettings;

@@ -22,247 +22,73 @@ static char THIS_FILE[] = __FILE__;
 // Tenths of a millimeter per inch
 #define MM10PERINCH		254
 
-// Wirebox window class name
-static const TCHAR* WIREBOX_CLASS_NAME = _T("ZoomInWirebox");
 
-// Global wirebox window handle
-static HWND g_hWireboxWnd = NULL;
+//***********************************************
 
-// Window procedure for the wirebox
+static const COLORREF COLOR_KEY = RGB(255, 0, 255);  // Magenta for transparency
 
-//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-//{
-//	switch (msg)
-//	{
-//	case WM_PAINT:
-//	{
-//		PAINTSTRUCT ps;
-//		HDC hdc = BeginPaint(hwnd, &ps);
-//		RECT rect;
-//		GetClientRect(hwnd, &rect);
-//		// Draw a 1-pixel black border (XOR for visibility)
-//		HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
-//		FrameRect(hdc, &rect, hBrush);
-//		DeleteObject(hBrush);
-//		EndPaint(hwnd, &ps);
-//		return 0;
-//	}
-//	case WM_ERASEBKGND:
-//		return TRUE; // Transparent background
-//	case WM_DESTROY:
-//		g_hWireboxWnd = NULL;
-//		return 0;
-//	}
-//	return DefWindowProc(hwnd, msg, wParam, lParam);
-//}
+IMPLEMENT_DYNAMIC(CWireboxWnd, CWnd)
 
-//LRESULT CALLBACK WireboxWndProc3(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-//{
-//	switch (msg)
-//	{
-//	case WM_PAINT:
-//	{
-//		PAINTSTRUCT ps;
-//		HDC hdc = BeginPaint(hwnd, &ps);
-//		RECT rect;
-//		GetClientRect(hwnd, &rect);
-//
-//		// Use XOR pen for high-contrast wireframe (mimics DSTINVERT)
-//		HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-//		HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-//		SetROP2(hdc, R2_NOTXORPEN); // Inverts pixels for visibility
-//
-//		// Draw wireframe (1-pixel outline)
-//		MoveToEx(hdc, rect.left, rect.top, NULL);
-//		LineTo(hdc, rect.right - 1, rect.top);
-//		LineTo(hdc, rect.right - 1, rect.bottom - 1);
-//		LineTo(hdc, rect.left, rect.bottom - 1);
-//		LineTo(hdc, rect.left, rect.top);
-//
-//		SelectObject(hdc, hOldPen);
-//		DeleteObject(hPen);
-//
-//		EndPaint(hwnd, &ps);
-//		return 0;
-//	}
-//	case WM_ERASEBKGND:
-//		return TRUE; // Transparent background
-//	case WM_DESTROY:
-//		g_hWireboxWnd = NULL;
-//		return 0;
-//	}
-//	return DefWindowProc(hwnd, msg, wParam, lParam);
-//}
-
-//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-//{
-//	switch (msg)
-//	{
-//	case WM_PAINT:
-//	{
-//		PAINTSTRUCT ps;
-//		HDC hdc = ::BeginPaint(hwnd, &ps);
-//		RECT rect;
-//		::GetClientRect(hwnd, &rect);
-//
-//		// Create memory DC and bitmap
-//		HDC hdcMem = ::CreateCompatibleDC(hdc);
-//		int width = rect.right - rect.left;
-//		int height = rect.bottom - rect.top;
-//
-//		// Create 32-bit DIB for per-pixel alpha
-//		BITMAPINFO bmi = { 0 };
-//		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-//		bmi.bmiHeader.biWidth = width;
-//		bmi.bmiHeader.biHeight = -height; // Top-down
-//		bmi.bmiHeader.biPlanes = 1;
-//		bmi.bmiHeader.biBitCount = 32;
-//		bmi.bmiHeader.biCompression = BI_RGB;
-//
-//		void* pBits;
-//		HBITMAP hBitmap = ::CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-//		if (hBitmap)
-//		{
-//			HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hdcMem, hBitmap);
-//
-//			// Fill with transparent black (alpha=0)
-//			memset(pBits, 0, width * height * 4);
-//
-//			// Draw wireframe with XOR for visibility
-//			HPEN hPen = ::CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-//			HPEN hOldPen = (HPEN)::SelectObject(hdcMem, hPen);
-//			::SetROP2(hdcMem, R2_NOTXORPEN); // Mimics DSTINVERT
-//			HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdcMem, ::GetStockObject(NULL_BRUSH));
-//
-//			// Draw rectangle outline
-//			::Rectangle(hdcMem, 0, 0, width, height);
-//
-//			::SelectObject(hdcMem, hOldPen);
-//			::SelectObject(hdcMem, hOldBrush);
-//			::DeleteObject(hPen);
-//
-//			// Update layered window
-//			POINT ptSrc = { 0, 0 };
-//			SIZE size = { width, height };
-//			BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-//			POINT ptDst = { rect.left, rect.top };
-//			::GetWindowRect(hwnd, &rect);
-//			ptDst.x = rect.left;
-//			ptDst.y = rect.top;
-//
-//			::UpdateLayeredWindow(hwnd, hdc, &ptDst, &size, hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
-//
-//			::SelectObject(hdcMem, hOldBitmap);
-//			::DeleteObject(hBitmap);
-//		}
-//		::DeleteDC(hdcMem);
-//		::EndPaint(hwnd, &ps);
-//		return 0;
-//	}
-//	case WM_ERASEBKGND:
-//		return TRUE; // No background erase
-//	case WM_DESTROY:
-//		g_hWireboxWnd = NULL;
-//		return 0;
-//	}
-//	return ::DefWindowProc(hwnd, msg, wParam, lParam);
-//}
-
-//LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-//{
-//	switch (msg)
-//	{
-//	case WM_PAINT:
-//	{
-//		PAINTSTRUCT ps;
-//		HDC hdc = ::BeginPaint(hwnd, &ps);
-//		RECT rect;
-//		::GetClientRect(hwnd, &rect);
-//
-//		ATLTRACE("WireboxWndProc: WM_PAINT, rect = LT(%d,%d) RB(%d,%d)\n",
-//			rect.left, rect.top, rect.right, rect.bottom);
-//
-//		// Draw wireframe with XOR for high contrast
-//		HPEN hPen = ::CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-//		HPEN hOldPen = (HPEN)::SelectObject(hdc, hPen);
-//		::SetROP2(hdc, R2_NOTXORPEN); // Mimics DSTINVERT
-//		HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdc, ::GetStockObject(NULL_BRUSH));
-//
-//		// Draw rectangle outline
-//		::Rectangle(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top);
-//
-//		::SelectObject(hdc, hOldPen);
-//		::SelectObject(hdc, hOldBrush);
-//		::DeleteObject(hPen);
-//
-//		::EndPaint(hwnd, &ps);
-//		return 0;
-//	}
-//	case WM_ERASEBKGND:
-//		ATLTRACE("WireboxWndProc: WM_ERASEBKGND\n");
-//		return TRUE; // Transparent background
-//	case WM_DESTROY:
-//		ATLTRACE("WireboxWndProc: WM_DESTROY\n");
-//		g_hWireboxWnd = NULL;
-//		return 0;
-//	}
-//	return ::DefWindowProc(hwnd, msg, wParam, lParam);
-//}
-
-static const COLORREF COLOR_KEY = RGB(255, 0, 255);  // Magenta as color key for transparency (unlikely screen color)
-static const COLORREF LINE_COLOR = RGB(0, 0, 0);  // Black for outline (change to RGB(255,255,255) for white if needed)
-
-LRESULT CALLBACK WireboxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+CWireboxWnd::CWireboxWnd(CMainFrame* pMainFrame)
+	: m_pMainFrame(pMainFrame)
 {
-	switch (msg)
-	{
-	case WM_PAINT:
-	{
-		PAINTSTRUCT ps;
-		HDC hdc = ::BeginPaint(hwnd, &ps);
-		CRect rect;
-		::GetClientRect(hwnd, &rect);
-
-		ATLTRACE("WireboxWndProc: WM_PAINT, rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
-
-		// Fill with color key for transparency
-		HBRUSH hBrush = ::CreateSolidBrush(COLOR_KEY);
-		::FillRect(hdc, &rect, hBrush);
-		::DeleteObject(hBrush);
-
-		// Draw wireframe outline
-		HPEN hPen = ::CreatePen(PS_SOLID, 1, LINE_COLOR);
-		HPEN hOldPen = (HPEN)::SelectObject(hdc, hPen);
-		//SetROP2(hdc, R2_NOTXORPEN); // Inverts pixels for visibility
-		HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdc, ::GetStockObject(NULL_BRUSH));
-
-		CBrush brush(COLOR_KEY);
-		::FillRect(hdc, rect, (HBRUSH)brush.GetSafeHandle());
-
-		//::Rectangle(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top);
-
-		PatBlt(hdc, rect.left, rect.top, rect.Width(), 1, DSTINVERT);
-		PatBlt(hdc, rect.left, rect.bottom, 1, -(rect.Height()), DSTINVERT);
-		PatBlt(hdc, rect.right - 1, rect.top, 1, rect.Height(), DSTINVERT);
-		PatBlt(hdc, rect.right, rect.bottom - 1, -(rect.Width()), 1, DSTINVERT);
-
-		::SelectObject(hdc, hOldPen);
-		::SelectObject(hdc, hOldBrush);
-		::DeleteObject(hPen);
-
-		::EndPaint(hwnd, &ps);
-		return 0;
-	}
-	case WM_ERASEBKGND:
-		ATLTRACE("WireboxWndProc: WM_ERASEBKGND\n");
-		return 1; // Transparent background
-	case WM_DESTROY:
-		ATLTRACE("WireboxWndProc: WM_DESTROY\n");
-		g_hWireboxWnd = NULL;
-		return 0;
-	}
-	return ::DefWindowProc(hwnd, msg, wParam, lParam);
 }
+
+CWireboxWnd::~CWireboxWnd()
+{
+}
+
+BEGIN_MESSAGE_MAP(CWireboxWnd, CWnd)
+	ON_WM_PAINT()
+	ON_WM_ERASEBKGND()
+END_MESSAGE_MAP()
+
+void CWireboxWnd::OnPaint()
+{
+	CPaintDC dc(this);
+	CRect rect;
+	GetClientRect(&rect);
+
+	ATLTRACE("CWireboxWnd::OnPaint, rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
+
+	// Get screen DC and window screen position
+	CDC screenDC;
+	screenDC.Attach(::GetDC(NULL));
+
+	int lineWidth = m_pMainFrame->m_nWireboxLineWidth;
+
+	// Copy the exact screen portion as in DoTheZoom
+	int srcX = m_pMainFrame->m_ptZoom.x - m_pMainFrame->m_nxZoomed / 2;
+	int srcY = m_pMainFrame->m_ptZoom.y - m_pMainFrame->m_nyZoomed / 2;
+
+	// Actually no need to BitBlt at all, it works as window is transparent
+	//dc.BitBlt(lineWidth, lineWidth, rect.Width(), rect.Height(), &screenDC, srcX, srcY, SRCCOPY);
+	//dc.StretchBlt(lineWidth, lineWidth, rect.Width(), rect.Height(), &screenDC, srcX, srcY, rect.Width(), rect.Height(), SRCCOPY);
+
+	//// That will not give us DSTINVERT funcionality
+	//// Fill with color key for transparency
+	//CBrush brush(COLOR_KEY);
+	//dc.FillRect(&rect, &brush);
+
+	//dc.FillSolidRect(rect, RGB(0, 255, 0));
+
+	screenDC.Detach();
+	::ReleaseDC(NULL, screenDC.GetSafeHdc());
+
+	// Invert edges with PatBlt (DSTINVERT)
+	dc.PatBlt(0, 0, rect.Width(), lineWidth, DSTINVERT);							// Top
+	dc.PatBlt(0, rect.Height() - lineWidth, rect.Width(), lineWidth, DSTINVERT);	// Bottom
+	dc.PatBlt(0, 0, lineWidth, rect.Height(), DSTINVERT);							// Left
+	dc.PatBlt(rect.Width() - lineWidth, 0, lineWidth, rect.Height(), DSTINVERT);	// Right
+}
+
+BOOL CWireboxWnd::OnEraseBkgnd(CDC* pDC)
+{
+	ATLTRACE("CWireboxWnd::OnEraseBkgnd\n");
+	return FALSE;
+}
+
+//***********************************************
 // Register a Window Message for the Taskbar Creation
 // This message is passed to us if Explorer crashes and reloads
 UINT CMainFrame::s_wmTaskbarCreated = RegisterWindowMessage(_T("TaskbarCreated"));
@@ -370,6 +196,7 @@ END_MESSAGE_MAP()
 
 //***********************************************
 CMainFrame::CMainFrame()
+	: m_wireboxWnd(this)
 {
 	// Load the icons and cursors
 	m_hIconLarge = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
@@ -392,14 +219,6 @@ CMainFrame::CMainFrame()
 	CString strWndClass = AfxRegisterWndClass(0, AfxGetApp()->LoadStandardCursor(IDC_ARROW), (HBRUSH)(COLOR_WINDOW + 1), m_hIconSmall);
 	CreateEx(WS_EX_TOPMOST, strWndClass, _T("ZoomIn"), WS_CAPTION | WS_OVERLAPPED | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX, point.x, point.y, size.cx, size.cy, NULL, m_menu.GetSafeHmenu());
 	LoadAccelTable(MAKEINTRESOURCE(IDR_MAINFRAME));
-
-	// After CreateEx call
-	WNDCLASS wc = { 0 };
-	wc.lpfnWndProc = WireboxWndProc;
-	wc.hInstance = AfxGetInstanceHandle();
-	wc.lpszClassName = WIREBOX_CLASS_NAME;
-	wc.hbrBackground = NULL; // Transparent
-	RegisterClass(&wc);
 
 	SetIcon(m_hIconLarge, TRUE);		// Set big icon
 	SetIcon(m_hIconSmall, FALSE);		// Set small icon
@@ -446,9 +265,6 @@ CMainFrame::~CMainFrame()
 		DestroyIcon(m_hIconLarge);
 	if(m_hCursorScan != NULL)
 		DestroyCursor(m_hCursorScan);
-
-	if (g_hWireboxWnd)
-		::DestroyWindow(g_hWireboxWnd);
 }
 
 //***********************************************
@@ -456,6 +272,18 @@ int CMainFrame::OnCreate(CREATESTRUCT *pCreateStruct)
 {
 	if(CFrameWnd::OnCreate(pCreateStruct) == -1)
 		return -1;
+
+	// Create wirebox window
+	if (!m_wireboxWnd.CreateEx(/*WS_EX_LAYERED|*/ WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+		AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW, NULL, NULL),
+		_T("Wirebox"), WS_POPUP, 0, 0, 0, 0, NULL, NULL))
+	{
+		ATLTRACE("CWireboxWnd creation failed, error = %d\n", ::GetLastError());
+		return -1;
+	}
+	ATLTRACE("Wirebox window created, HWND = %p\n", m_wireboxWnd.GetSafeHwnd());
+
+	//::SetLayeredWindowAttributes(m_wireboxWnd.GetSafeHwnd(), COLOR_KEY, 0, LWA_COLORKEY);
 
 	static UINT indicators[] =
 	{
@@ -818,29 +646,11 @@ void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point)
 	CFrameWnd::OnLButtonDown(nFlags, point);
 }
 //***********************************************
-//void CMainFrame::OnLButtonUp(UINT nFlags, CPoint point)
-//{
-//	if(m_bIsLooking)
-//	{
-//		DrawZoomRect();
-//		ReleaseCapture();
-//		m_bIsLooking = false;
-//
-////		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
-//		SetCursor(m_hCursorPrev);
-//
-//		// Redraw the whole screen
-//		::InvalidateRect(NULL, NULL, FALSE);
-//	}
-//
-//	CFrameWnd::OnLButtonUp(nFlags, point);
-//}
 void CMainFrame::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	if (m_bIsLooking)
 	{
-		if (g_hWireboxWnd)
-			::ShowWindow(g_hWireboxWnd, SW_HIDE);
+		m_wireboxWnd.ShowWindow(SW_HIDE);
 		ReleaseCapture();
 		m_bIsLooking = false;
 		SetCursor(m_hCursorPrev);
@@ -848,27 +658,11 @@ void CMainFrame::OnLButtonUp(UINT nFlags, CPoint point)
 	}
 	CFrameWnd::OnLButtonUp(nFlags, point);
 }
-//***********************************************
-//void CMainFrame::OnCaptureChanged(CWnd *pWnd)
-//{
-//	if(m_bIsLooking)
-//	{
-//		DrawZoomRect();
-//		ReleaseCapture();
-//		m_bIsLooking = false;
-//
-////		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_ARROW));
-//		SetCursor(m_hCursorPrev);
-//	}
-//
-//	CFrameWnd::OnCaptureChanged(pWnd);
-//}
 void CMainFrame::OnCaptureChanged(CWnd* pWnd)
 {
 	if (m_bIsLooking)
 	{
-		if (g_hWireboxWnd)
-			::ShowWindow(g_hWireboxWnd, SW_HIDE);
+		m_wireboxWnd.ShowWindow(SW_HIDE);
 		ReleaseCapture();
 		m_bIsLooking = false;
 		SetCursor(m_hCursorPrev);
@@ -880,29 +674,15 @@ void CMainFrame::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if(m_bIsLooking)
 	{
-		//ATLTRACE("OnMouseMove point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, m_ptZoom.x, m_ptZoom.y);
-		//DrawZoomRect();
-		//m_ptZoom.x = point.x;
-		//m_ptZoom.y = point.y;
-		//ClientToScreen(&m_ptZoom);
-		//DrawZoomRect();
-		//DoTheZoom();
-
-		//POINT pt;
-		//GetCursorPos(&pt);
-		//ATLTRACE("OnMouseMove: point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, pt.x, pt.y);
-		////if (g_hWireboxWnd)
-		////	::ShowWindow(g_hWireboxWnd, SW_HIDE); // Hide to avoid flicker
-		//m_ptZoom = pt;
-		//DrawZoomRect();
-		//DoTheZoom();
-
-		POINT pt;
+		CPoint pt;
 		GetCursorPos(&pt);
-		ATLTRACE("OnMouseMove: point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, pt.x, pt.y);
-		m_ptZoom = pt;
-		DrawZoomRect();
-		DoTheZoom();
+		if (pt != m_ptZoom)
+		{
+			ATLTRACE("OnMouseMove: point=(%d,%d) m_ptZoom=(%d,%d)\n", point.x, point.y, pt.x, pt.y);
+			m_ptZoom = pt;
+			DrawZoomRect();
+			DoTheZoom();
+		}
 	}
 	else
 	{
@@ -1020,22 +800,10 @@ void CMainFrame::DoTheZoom(CDC *pDC)
 	// Obtain pointer to screen dc
 	pdcScreen = CDC::FromHandle(::GetDC(NULL));
 
-	//bool wasVisible = false;
-	//if (m_bIsLooking && g_hWireboxWnd)
-	//{
-	//	wasVisible = ::IsWindowVisible(g_hWireboxWnd);
-	//	::ShowWindow(g_hWireboxWnd, SW_HIDE);
-	//}
-
 	// Copy screen image to memory dc
 	dcMem.FloodFill(1, 1, RGB(0, 0, 0));
 	dcMem.SetStretchBltMode(COLORONCOLOR);
 	dcMem.StretchBlt(0, 0, m_settings.GetZoom() * m_nxZoomed, m_settings.GetZoom() * m_nyZoomed, pdcScreen, pt.x - m_nxZoomed / 2, pt.y - m_nyZoomed / 2, m_nxZoomed, m_nyZoomed, SRCCOPY);
-
-	//if (m_bIsLooking && g_hWireboxWnd && wasVisible)
-	//{
-	//	::ShowWindow(g_hWireboxWnd, SW_SHOWNA);  // SW_SHOWNA avoids activation/focus change
-	//}
 
 	// Does the zoomed rect intersect with the client window?
 	// If so fill the area with black to prevent scanning the scan area.
@@ -1569,7 +1337,7 @@ void CMainFrame::DrawZoomRect(void)
 	rect.top = nY - m_nyZoomed / 2;
 	rect.right = rect.left + m_nxZoomed;
 	rect.bottom = rect.top + m_nyZoomed;
-	InflateRect(&rect, 1, 1);
+	InflateRect(&rect, m_nWireboxLineWidth, m_nWireboxLineWidth);
 
 	ATLTRACE("DrawZoomRect rect = LT(%d,%d) RB(%d,%d)\n", rect.left, rect.top, rect.right, rect.bottom);
 
@@ -1595,38 +1363,14 @@ void CMainFrame::DrawZoomRect(void)
 		ATLTRACE("MonitorFromPoint failed for pt (%d,%d), error = %d\n", nX, nY, ::GetLastError());
 	}
 
-	// Create or move the wirebox window
-	if (!g_hWireboxWnd)
-	{
-		g_hWireboxWnd = ::CreateWindowEx(
-			WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
-			WIREBOX_CLASS_NAME,
-			_T("Wirebox"),
-			WS_POPUP | WS_VISIBLE,
-			rect.left, rect.top, rect.Width(), rect.Height(),
-			NULL, NULL, AfxGetInstanceHandle(), NULL);
-		if (g_hWireboxWnd)
-		{
-			ATLTRACE("Wirebox window created, HWND = %p, pos LT(%d,%d) size (%d,%d)\n",
-				g_hWireboxWnd, rect.left, rect.top, rect.Width(), rect.Height());
+	// Move the wirebox window
+	ATLTRACE("Moving wirebox window, HWND = %p, pos LT(%d,%d) size (%d,%d)\n", m_wireboxWnd.GetSafeHwnd(), rect.left, rect.top, rect.Width(), rect.Height());
 
-			// Set color key for transparency
-			::SetLayeredWindowAttributes(g_hWireboxWnd, COLOR_KEY, 0, LWA_COLORKEY);
-			::UpdateWindow(g_hWireboxWnd);
-		}
-		else
-		{
-			ATLTRACE("CreateWindowEx failed for wirebox, error = %d\n", ::GetLastError());
-		}
-	}
-	else
-	{
-		ATLTRACE("Moving wirebox window, HWND = %p, pos LT(%d,%d) size (%d,%d)\n",
-			g_hWireboxWnd, rect.left, rect.top, rect.Width(), rect.Height());
-		::SetWindowPos(g_hWireboxWnd, HWND_TOPMOST, rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
-		::InvalidateRect(g_hWireboxWnd, NULL, TRUE);
-		::UpdateWindow(g_hWireboxWnd);
-	}
+	m_wireboxWnd.ShowWindow(SW_HIDE);
+	m_wireboxWnd.MoveWindow(&rect, TRUE);
+	m_wireboxWnd.SetWindowPos(&CWnd::wndTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	m_wireboxWnd.ShowWindow(SW_SHOWNOACTIVATE);
+	m_wireboxWnd.UpdateWindow();
 }
 //***********************************************
 void CMainFrame::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar *pScrollBar)
