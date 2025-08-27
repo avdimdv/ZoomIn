@@ -42,8 +42,10 @@ protected:
 	CSettings m_settings;
 	bool m_bSaveSettings;
 
+	int m_nxScreenMin;
 	int m_nxScreenMax;		// Width of the screen (less 1)
 	int m_nxZoomed;			// Client width in zoomed pixels
+	int m_nyScreenMin;
 	int m_nyScreenMax;		// Height of the screen (less 1)
 	int m_nyZoomed;			// Client height in zoomed pixels
 	bool m_bIsLooking;

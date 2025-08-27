@@ -45,15 +45,50 @@ UINT CMainFrame::s_wmTaskbarCreated = RegisterWindowMessage(_T("TaskbarCreated")
 BOOL APIENTRY MonitorEnumProc(HMONITOR hMon, HDC hdcMon, PRECT pRectMon, LPARAM lParam)
 {
 	_ASSERTE(lParam);
-	CRect *pRect = (CRect*)lParam;
-	if(pRectMon->left < pRect->left)
-		pRect->left = pRectMon->left;
-	if(pRectMon->right > pRect->right)
-		pRect->right = pRectMon->right;
-	if(pRectMon->top < pRect->top)
-		pRect->top = pRectMon->top;
-	if(pRectMon->bottom > pRect->bottom)
-		pRect->bottom = pRectMon->bottom;
+	RECT *pRect = (RECT*)lParam;
+
+	/*
+	RECT rcVirtualScreen = { ::GetSystemMetrics(SM_XVIRTUALSCREEN), ::GetSystemMetrics(SM_YVIRTUALSCREEN), ::GetSystemMetrics(SM_CXVIRTUALSCREEN), ::GetSystemMetrics(SM_CYVIRTUALSCREEN) };
+
+	MONITORINFO mi = { 0 };
+	mi.cbSize = sizeof(MONITORINFO);
+	GetMonitorInfo(hMon, &mi);
+
+	BOOL isPrimary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
+
+	int x = rcVirtualScreen.left > 0 ? rcVirtualScreen.left : -rcVirtualScreen.left;
+	int y = rcVirtualScreen.top > 0 ? rcVirtualScreen.top : -rcVirtualScreen.top;
+
+	RECT rect = { 0 };
+	if (isPrimary)
+	{
+		rect.left = x;
+		rect.top = y;
+		rect.right = rect.left + (mi.rcMonitor.right - mi.rcMonitor.left);
+		rect.bottom = rect.top + (mi.rcMonitor.bottom - mi.rcMonitor.top);
+	}
+	else
+	{
+		rect.left = x + mi.rcMonitor.left;
+		rect.top = y + mi.rcMonitor.top;
+		rect.right = rect.left + (mi.rcMonitor.right - mi.rcMonitor.left);
+		rect.bottom = rect.top + (mi.rcMonitor.bottom - mi.rcMonitor.top);
+	}
+	UnionRect(pRect, pRect, &rect);
+	*/
+
+	//// Initial code
+	//if(pRectMon->left < pRect->left)
+	//	pRect->left = pRectMon->left;
+	//if(pRectMon->right > pRect->right)
+	//	pRect->right = pRectMon->right;
+	//if(pRectMon->top < pRect->top)
+	//	pRect->top = pRectMon->top;
+	//if(pRectMon->bottom > pRect->bottom)
+	//	pRect->bottom = pRectMon->bottom;
+
+	UnionRect(pRect, pRect, pRectMon);
+
 	return TRUE;
 }
 
@@ -121,8 +156,13 @@ CMainFrame::CMainFrame()
 	SetIcon(m_hIconSmall, FALSE);		// Set small icon
 
 	CRect rectDesktop = GetDesktopSize();
-	m_nxScreenMax = rectDesktop.Width() - 1;
-	m_nyScreenMax = rectDesktop.Height() - 1;
+	//m_nxScreenMax = rectDesktop.Width() - 1;
+	//m_nyScreenMax = rectDesktop.Height() - 1;
+	m_nxScreenMin = rectDesktop.left;
+	m_nxScreenMax = rectDesktop.right - 1;
+	m_nyScreenMin = rectDesktop.top;
+	m_nyScreenMax = rectDesktop.bottom - 1;
+
 	m_bIsLooking = false;
 	m_ptZoom = CPoint(0, 0);
 	m_nTimerID = 0;
@@ -488,13 +528,16 @@ void CMainFrame::OnWindowPosChanging(WINDOWPOS *pwndpos)
 //***********************************************
 void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point)
 {
-	m_ptZoom.x = point.x;
-	m_ptZoom.y = point.y;
+	// Use GetCursorPos for accurate screen coordinates
+	POINT pt;
+	GetCursorPos(&pt);
+	m_ptZoom = pt;
+
+	ATLTRACE("OnLButtonDown: m_ptZoom=(%d,%d)\n", m_ptZoom.x, m_ptZoom.y);
 
 	m_wndStatusBar.SetPaneText(1, _T(""));
 	m_wndStatusBar.SetPaneText(2, _T(""));
 
-	ClientToScreen(&m_ptZoom);
 	DrawZoomRect();
 	DoTheZoom();
 
