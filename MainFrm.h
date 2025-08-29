@@ -17,6 +17,9 @@ protected:
 public:
 	afx_msg void OnPaint();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnNcPaint();
+	afx_msg void OnNcCalcSize(BOOL bCalcValidRects, NCCALCSIZE_PARAMS* lpncsp);
+	afx_msg LRESULT OnNcHitTest(CPoint point);
 };
 
 class CMainFrame : public CFrameWnd
@@ -90,6 +93,7 @@ protected:
 protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(CREATESTRUCT *pCreateStruct);
+	afx_msg void OnDestroy();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO *pMMI);
 	afx_msg void OnCopy();
